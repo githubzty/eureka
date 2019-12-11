@@ -42,6 +42,9 @@ public abstract class AbstractJerseyEurekaHttpClient implements EurekaHttpClient
         logger.debug("Created client for url: {}", serviceUrl);
     }
 
+    //zty 注册
+    //调用 AbstractJerseyEurekaHttpClient#register(...) 方法，
+    // POST 请求 Eureka-Server 的 apps/${APP_NAME} 接口，参数为 InstanceInfo ，实现注册实例信息的注册。
     @Override
     public EurekaHttpResponse<Void> register(InstanceInfo info) {
         String urlPath = "apps/" + info.getAppName();

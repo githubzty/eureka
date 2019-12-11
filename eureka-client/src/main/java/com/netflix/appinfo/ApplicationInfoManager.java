@@ -250,6 +250,7 @@ public class ApplicationInfoManager {
         instanceInfo.setIsDirty();
     }
 
+    //zty刷新租约相关信息
     public void refreshLeaseInfoIfRequired() {
         LeaseInfo leaseInfo = instanceInfo.getLeaseInfo();
         if (leaseInfo == null) {
@@ -257,7 +258,8 @@ public class ApplicationInfoManager {
         }
         int currentLeaseDuration = config.getLeaseExpirationDurationInSeconds();
         int currentLeaseRenewal = config.getLeaseRenewalIntervalInSeconds();
-        if (leaseInfo.getDurationInSecs() != currentLeaseDuration || leaseInfo.getRenewalIntervalInSecs() != currentLeaseRenewal) {
+        if (leaseInfo.getDurationInSecs() != currentLeaseDuration  // 租约过期时间 改变
+                || leaseInfo.getRenewalIntervalInSecs() != currentLeaseRenewal) { // 租约续约频率 改变
             LeaseInfo newLeaseInfo = LeaseInfo.Builder.newBuilder()
                     .setRenewalIntervalInSecs(currentLeaseRenewal)
                     .setDurationInSecs(currentLeaseDuration)

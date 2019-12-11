@@ -115,6 +115,7 @@ class InstanceInfoReplicator implements Runnable {
                     public void run() {
                         logger.debug("Executing on-demand update of local InstanceInfo");
                         // zty取消任务
+                        //这里get对应上面的scheduledPeriodicRef.set(next);
                         Future latestPeriodic = scheduledPeriodicRef.get();
                         if (latestPeriodic != null && !latestPeriodic.isDone()) {
                             logger.debug("Canceling the latest scheduled update, it will be rescheduled at the end of on demand update");

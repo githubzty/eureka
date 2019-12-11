@@ -849,10 +849,12 @@ public class DiscoveryClient implements EurekaClient {
     /**
      * Register with the eureka service by making the appropriate REST call.
      */
+    //zty 注册
     boolean register() throws Throwable {
         logger.info(PREFIX + "{}: registering service...", appPathIdentifier);
         EurekaHttpResponse<Void> httpResponse;
         try {
+            //deep AbstractJerseyEurekaHttpClient
             httpResponse = eurekaTransport.registrationClient.register(instanceInfo);
         } catch (Exception e) {
             logger.warn(PREFIX + "{} - registration failed {}", appPathIdentifier, e.getMessage(), e);
@@ -1423,9 +1425,11 @@ public class DiscoveryClient implements EurekaClient {
      */
     //zty
     void refreshInstanceInfo() {
+        // 刷新 数据中心信息。关注应用实例信息的 hostName 、 ipAddr 、 dataCenterInfo 等属性的变化。
         applicationInfoManager.refreshDataCenterInfoIfRequired();
+        // 刷新 租约信息。 关注应用实例信息的 renewalIntervalInSecs 、 durationInSecs 属性的变化。
         applicationInfoManager.refreshLeaseInfoIfRequired();
-
+        // 健康检查，跳过
         InstanceStatus status;
         try {
             status = getHealthCheckHandler().getStatus(instanceInfo.getStatus());
