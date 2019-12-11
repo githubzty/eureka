@@ -57,6 +57,9 @@ public class ApplicationInfoManager {
 
     private static ApplicationInfoManager instance = new ApplicationInfoManager(null, null, null);
 
+    /**
+     * zty状态变更监听器
+     */
     protected final Map<String, StatusChangeListener> listeners;
     private final InstanceStatusMapper instanceStatusMapper;
 
@@ -164,12 +167,13 @@ public class ApplicationInfoManager {
      *
      * @param status Status of the instance
      */
+    //zty
     public synchronized void setInstanceStatus(InstanceStatus status) {
         InstanceStatus next = instanceStatusMapper.map(status);
         if (next == null) {
             return;
         }
-
+        //deep
         InstanceStatus prev = instanceInfo.setStatus(next);
         if (prev != null) {
             for (StatusChangeListener listener : listeners.values()) {
@@ -182,6 +186,7 @@ public class ApplicationInfoManager {
         }
     }
 
+    //zty
     public void registerStatusChangeListener(StatusChangeListener listener) {
         listeners.put(listener.getId(), listener);
     }

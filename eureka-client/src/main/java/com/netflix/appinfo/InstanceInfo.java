@@ -1165,10 +1165,12 @@ public class InstanceInfo {
      * @param status status for this instance.
      * @return the prev status if a different status from the current was set, null otherwise
      */
+    //zty
     public synchronized InstanceStatus setStatus(InstanceStatus status) {
         if (this.status != status) {
             InstanceStatus prev = this.status;
             this.status = status;
+            // 设置 应用实例信息 数据不一致
             setIsDirty();
             return prev;
         }
@@ -1212,6 +1214,7 @@ public class InstanceInfo {
     /**
      * @return the lastDirtyTimestamp if is dirty, null otherwise.
      */
+    //zty
     public synchronized Long isDirtyWithTime() {
         if (isInstanceInfoDirty) {
             return lastDirtyTimestamp;
@@ -1241,6 +1244,7 @@ public class InstanceInfo {
      * Sets the dirty flag so that the instance information can be carried to
      * the discovery server on the next heartbeat.
      */
+    //zty
     public synchronized void setIsDirty() {
         isInstanceInfoDirty = true;
         lastDirtyTimestamp = System.currentTimeMillis();
