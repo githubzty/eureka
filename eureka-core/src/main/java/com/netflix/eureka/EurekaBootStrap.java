@@ -212,6 +212,7 @@ public class EurekaBootStrap implements ServletContextListener {
         logger.info("Initialized server context");
 
         // Copy registry from neighboring eureka node
+        //zty 从其他 Eureka-Server 拉取注册信息 ,里面有更新了自我保护阈值 deep
         int registryCount = registry.syncUp();
         registry.openForTraffic(applicationInfoManager, registryCount);
 

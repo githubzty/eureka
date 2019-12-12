@@ -188,11 +188,15 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
      * many instances at a time.
      *
      */
+
+    //zty 定时重置
+    //Eureka-Server 定时重新计算 numberOfRenewsPerMinThreshold 、expectedNumberOfRenewsPerMin
+    //配置 eureka.renewalThresholdUpdateIntervalMs 参数，定时重新计算。默认，15 分钟。
     private void scheduleRenewalThresholdUpdateTask() {
         timer.schedule(new TimerTask() {
                            @Override
                            public void run() {
-                               updateRenewalThreshold();
+                               updateRenewalThreshold();   //deep
                            }
                        }, serverConfig.getRenewalThresholdUpdateIntervalMs(),
                 serverConfig.getRenewalThresholdUpdateIntervalMs());
@@ -237,7 +241,9 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
     @Override
     public void openForTraffic(ApplicationInfoManager applicationInfoManager, int count) {
         // Renewals happen every 30 seconds and for a minute it should be a factor of 2.
+        //上面这个错的，是针对以前版本this.expectedNumberOfRenewsPerMin = count * 2;的注解
         this.expectedNumberOfClientsSendingRenews = count;
+        //自我保护用到的值更新
         updateRenewsPerMinThreshold();
         logger.info("Got {} instances from neighboring DS node", count);
         logger.info("Renew threshold is: {}", numberOfRenewsPerMinThreshold);
@@ -372,6 +378,7 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
      * @see com.netflix.eureka.registry.InstanceRegistry#cancel(java.lang.String,
      * java.lang.String, long, boolean)
      */
+    //应用实例下线 ，也会更新自我保护阈值
     @Override
     public boolean cancel(final String appName, final String id,
                           final boolean isReplication) {
@@ -381,6 +388,7 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
                 if (this.expectedNumberOfClientsSendingRenews > 0) {
                     // Since the client wants to cancel it, reduce the number of clients to send renews
                     this.expectedNumberOfClientsSendingRenews = this.expectedNumberOfClientsSendingRenews - 1;
+                    //deep 更新自我保护阈值
                     updateRenewsPerMinThreshold();
                 }
             }
@@ -479,12 +487,16 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
         }
     }
 
+    //zty 自我保护判断 .是否需要过期
     @Override
     public boolean isLeaseExpirationEnabled() {
         if (!isSelfPreservationModeEnabled()) {
             // The self preservation mode is disabled, hence allowing the instances to expire.
+            //isSelfPreservationModeEnabled为false，关闭自我保护，直接返回true
             return true;
         }
+        //期望每分钟最小心跳大于0，并且实际每分钟心跳次数大于期望每分钟最小心跳，才允许过期，否则就自我保护
+        //updateRenewsPerMinThreshold()    里更新  numberOfRenewsPerMinThreshold
         return numberOfRenewsPerMinThreshold > 0 && getNumOfRenewsInLastMin() > numberOfRenewsPerMinThreshold;
     }
 
@@ -521,8 +533,10 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
      * {@link EurekaServerConfig#getRenewalPercentThreshold()} of renewals
      * received per minute {@link #getNumOfRenewsInLastMin()}.
      */
+    //zty  自我保护的参数
     private void updateRenewalThreshold() {
         try {
+            // 计算 应用实例数
             Applications apps = eurekaClient.getApplications();
             int count = 0;
             for (Application app : apps.getRegisteredApplications()) {
@@ -532,9 +546,15 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
                     }
                 }
             }
+            // 计算 expectedNumberOfRenewsPerMin 、 numberOfRenewsPerMinThreshold 参数
             synchronized (lock) {
                 // Update threshold only if the threshold is greater than the
                 // current expected threshold or if self preservation is disabled.
+                //1 代码块 !this.isSelfPreservationModeEnabled() ：当未开启自我保护机制时，每次都进行重新计算。
+                //2 代码块 (count * 2) > (serverConfig.getRenewalPercentThreshold() * numberOfRenewsPerMinThreshold) ：
+                // 当开启自我保护机制时，应用实例每分钟最大心跳数( count * 2 )
+                // 小于期望最小每分钟续租次数( serverConfig.getRenewalPercentThreshold() * numberOfRenewsPerMinThreshold )，
+                // 不重新计算。如果重新计算，自动保护机制会每次定时执行后失效。
                 if ((count) > (serverConfig.getRenewalPercentThreshold() * expectedNumberOfClientsSendingRenews)
                         || (!this.isSelfPreservationModeEnabled())) {
                     this.expectedNumberOfClientsSendingRenews = count;

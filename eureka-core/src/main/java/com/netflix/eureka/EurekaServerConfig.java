@@ -125,6 +125,7 @@ public interface EurekaServerConfig {
      * @return value between 0 and 1 indicating the percentage. For example,
      *         <code>85%</code> will be specified as <code>0.85</code>.
      */
+    //续租百分比，自我保护机制，心跳阈值
     double getRenewalPercentThreshold();
 
     /**

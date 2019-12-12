@@ -109,7 +109,13 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
     private final AtomicReference<EvictionTask> evictionTaskRef = new AtomicReference<EvictionTask>();
 
     protected String[] allKnownRemoteRegions = EMPTY_STR_ARRAY;
+    /**
+     * 期望最小每分钟续租次数.server上心跳（当前实例*60/续租间隔）小于这个值就保护
+     */
     protected volatile int numberOfRenewsPerMinThreshold;
+    /**
+     * 期望发送续租的客户端数量
+     */
     protected volatile int expectedNumberOfClientsSendingRenews;
 
     protected final EurekaServerConfig serverConfig;
@@ -604,14 +610,19 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
         evict(0l);
     }
 
+    //zty 自我保护机制入口，放在过期租约的逻辑前，过期前去判断下是否需要保护
+    //当每分钟心跳次数( renewsLastMin ) 小于 numberOfRenewsPerMinThreshold 时，
+    // 并且开启自动保护模式开关( eureka.enableSelfPreservation = true ) 时，触发自动保护机制，不再自动过期租约
     public void evict(long additionalLeaseMs) {
         logger.debug("Running the evict task");
 
+        //deep 自我保护  PeerAwareInstanceRegistryImpl.java
         if (!isLeaseExpirationEnabled()) {
             logger.debug("DS: lease expiration is currently disabled.");
             return;
         }
 
+        //以下是过期租约逻辑
         // We collect first all expired items, to evict them in random order. For large eviction sets,
         // if we do not that, we might wipe out whole apps before self preservation kicks in. By randomizing it,
         // the impact should be evenly distributed across all applications.
@@ -1210,6 +1221,8 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
         responseCache.invalidate(appName, vipAddress, secureVipAddress);
     }
 
+    //zty计算 期望最小每分钟续租次数。也就是进入自我保护的阈值
+    //默认情况下，eureka.renewalPercentThreshold = 0.85 。
     protected void updateRenewsPerMinThreshold() {
         this.numberOfRenewsPerMinThreshold = (int) (this.expectedNumberOfClientsSendingRenews
                 * (60.0 / serverConfig.getExpectedClientRenewalIntervalSeconds())
