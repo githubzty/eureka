@@ -712,9 +712,10 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
      */
     public Applications getApplications() {
         boolean disableTransparentFallback = serverConfig.disableTransparentFallbackToOtherRegion();
-        if (disableTransparentFallback) {
+        if (disableTransparentFallback) {  //RemoteRegionRegistry
             return getApplicationsFromLocalRegionOnly();
         } else {
+            //获得注册的应用集合
             return getApplicationsFromAllRemoteRegions();  // Behavior of falling back to remote region can be disabled.
         }
     }
@@ -754,7 +755,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
      * from remote regions can be only for certain whitelisted apps as explained above.
      */
     public Applications getApplicationsFromMultipleRegions(String[] remoteRegions) {
-
+        // RemoteRegionRegistry
         boolean includeRemoteRegion = null != remoteRegions && remoteRegions.length != 0;
 
         logger.debug("Fetching applications registry with remote regions: {}, Regions argument {}",
@@ -765,6 +766,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
         } else {
             GET_ALL_CACHE_MISS.increment();
         }
+        // 获得获得注册的应用集合
         Applications apps = new Applications();
         apps.setVersion(1L);
         for (Entry<String, Map<String, Lease<InstanceInfo>>> entry : registry.entrySet()) {
@@ -783,6 +785,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                 apps.addApplication(app);
             }
         }
+        // RemoteRegionRegistry
         if (includeRemoteRegion) {
             for (String remoteRegion : remoteRegions) {
                 RemoteRegionRegistry remoteRegistry = regionNameVSRemoteRegistry.get(remoteRegion);
@@ -812,6 +815,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                 }
             }
         }
+        // 设置 应用集合 hashcode 该变量用于校验增量获取的注册信息和 Eureka-Server 全量的注册信息是否一致( 完整 )
         apps.setAppsHashCode(apps.getReconcileHashCode());
         return apps;
     }

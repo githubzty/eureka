@@ -183,6 +183,7 @@ public abstract class AbstractJerseyEurekaHttpClient implements EurekaHttpClient
         return getApplicationsInternal("svips/" + secureVipAddress, regions);
     }
 
+    //zty GET 请求 Eureka-Server 的 apps/ 接口，参数为 regions ，返回格式为 JSON ，实现全量获取注册信息。
     private EurekaHttpResponse<Applications> getApplicationsInternal(String urlPath, String[] regions) {
         ClientResponse response = null;
         String regionsParamValue = null;
@@ -194,6 +195,7 @@ public abstract class AbstractJerseyEurekaHttpClient implements EurekaHttpClient
             }
             Builder requestBuilder = webResource.getRequestBuilder();
             addExtraHeaders(requestBuilder);
+            //get请求，返回格式为 JSON
             response = requestBuilder.accept(MediaType.APPLICATION_JSON_TYPE).get(ClientResponse.class);
 
             Applications applications = null;

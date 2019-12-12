@@ -113,6 +113,8 @@ public class ApplicationsResource {
      * @return a response containing information about all {@link com.netflix.discovery.shared.Applications}
      *         from the {@link AbstractInstanceRegistry}.
      */
+
+    //zty 接收全量获取请求
     @GET
     public Response getContainers(@PathParam("version") String version,
                                   @HeaderParam(HEADER_ACCEPT) String acceptHeader,
@@ -134,10 +136,17 @@ public class ApplicationsResource {
         // Check if the server allows the access to the registry. The server can
         // restrict access if it is not
         // ready to serve traffic depending on various reasons.
+
+        // 判断是否可以访问
+        //Eureka-Server 启动完成，但是未处于就绪( Ready )状态，不接受请求全量应用注册信息的请求，
+        // 例如，Eureka-Server 启动时，未能从其他 Eureka-Server 集群的节点获取到应用注册信息。
         if (!registry.shouldAllowAccess(isRemoteRegionRequested)) {
             return Response.status(Status.FORBIDDEN).build();
         }
+        // API 版本   默认最新 API 版本为 V2
         CurrentRequestVersion.set(Version.toEnum(version));
+
+        // 返回数据格式   默认 JSON
         KeyType keyType = Key.KeyType.JSON;
         String returnMediaType = MediaType.APPLICATION_JSON;
         if (acceptHeader == null || !acceptHeader.contains(HEADER_JSON_VALUE)) {
@@ -145,8 +154,9 @@ public class ApplicationsResource {
             returnMediaType = MediaType.APPLICATION_XML;
         }
 
+        // 响应缓存键( KEY )  创建响应缓存( ResponseCache ) 的键( KEY )
         Key cacheKey = new Key(Key.EntityType.Application,
-                ResponseCacheImpl.ALL_APPS,
+                ResponseCacheImpl.ALL_APPS,          //com.netflix.eureka.registry.ResponseCacheImpl，响应缓存实现类。
                 keyType, CurrentRequestVersion.get(), EurekaAccept.fromString(eurekaAccept), regions
         );
 
@@ -157,7 +167,7 @@ public class ApplicationsResource {
                     .header(HEADER_CONTENT_TYPE, returnMediaType)
                     .build();
         } else {
-            response = Response.ok(responseCache.get(cacheKey))
+            response = Response.ok(responseCache.get(cacheKey))   //deep
                     .build();
         }
         CurrentRequestVersion.remove();

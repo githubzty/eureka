@@ -127,8 +127,10 @@ public class ResponseCacheImpl implements ResponseCache {
         this.registry = registry;
 
         long responseCacheUpdateIntervalMs = serverConfig.getResponseCacheUpdateIntervalMs();
+
+        //zty 读写缓存
         this.readWriteCacheMap =
-                CacheBuilder.newBuilder().initialCapacity(serverConfig.getInitialCapacityOfResponseCache())
+                CacheBuilder.newBuilder().initialCapacity(serverConfig.getInitialCapacityOfResponseCache())  //最大缓存数量为 1000 。
                         .expireAfterWrite(serverConfig.getResponseCacheAutoExpirationInSeconds(), TimeUnit.SECONDS)
                         .removalListener(new RemovalListener<Key, Value>() {
                             @Override
@@ -147,6 +149,7 @@ public class ResponseCacheImpl implements ResponseCache {
                                     Key cloneWithNoRegions = key.cloneWithoutRegions();
                                     regionSpecificKeys.put(cloneWithNoRegions, key);
                                 }
+                                //生成缓存值。
                                 Value value = generatePayload(key);
                                 return value;
                             }
@@ -205,12 +208,16 @@ public class ResponseCacheImpl implements ResponseCache {
      * @param key the key for which the cached information needs to be obtained.
      * @return payload which contains information about the applications.
      */
+
+    //其中 shouldUseReadOnlyResponseCache 通过配置 eureka.shouldUseReadOnlyResponseCache = true (默认值 ：true ) 开启只读缓存。
+    // 如果你对数据的一致性有相对高的要求，可以关闭这个开关，当然因为少了 readOnlyCacheMap ，性能会有一定的下降。
     public String get(final Key key) {
         return get(key, shouldUseReadOnlyResponseCache);
     }
 
     @VisibleForTesting
     String get(final Key key, boolean useReadOnlyCache) {
+        //deep
         Value payload = getValue(key, useReadOnlyCache);
         if (payload == null || payload.getPayload().equals(EMPTY_PAYLOAD)) {
             return null;
@@ -352,6 +359,8 @@ public class ResponseCacheImpl implements ResponseCache {
     Value getValue(final Key key, boolean useReadOnlyCache) {
         Value payload = null;
         try {
+            //强一致性要求高，就设置后，直接从读写缓存中读。默认先从只读缓存中读
+            //然后先从只读读，读到直接赋值，只读读不到读读写缓存，并更新到只读缓存
             if (useReadOnlyCache) {
                 final Value currentPayload = readOnlyCacheMap.get(key);
                 if (currentPayload != null) {
@@ -372,10 +381,13 @@ public class ResponseCacheImpl implements ResponseCache {
     /**
      * Generate pay load with both JSON and XML formats for all applications.
      */
+    //zty 将注册的应用集合转换成缓存值
     private String getPayLoad(Key key, Applications apps) {
+        // 获得编码器
         EncoderWrapper encoderWrapper = serverCodecs.getEncoder(key.getType(), key.getEurekaAccept());
         String result;
         try {
+            // 编码
             result = encoderWrapper.encode(apps);
         } catch (Exception e) {
             logger.error("Failed to encode the payload for all apps", e);
@@ -407,6 +419,7 @@ public class ResponseCacheImpl implements ResponseCache {
     /*
      * Generate pay load for the given key.
      */
+    //zty
     private Value generatePayload(Key key) {
         Stopwatch tracer = null;
         try {
@@ -420,10 +433,13 @@ public class ResponseCacheImpl implements ResponseCache {
                             tracer = serializeAllAppsWithRemoteRegionTimer.start();
                             payload = getPayLoad(key, registry.getApplicationsFromMultipleRegions(key.getRegions()));
                         } else {
+                            //调用 AbstractInstanceRegistry#getApplications() 方法，获得注册的应用集合。
+                            // 后调用 #getPayLoad() 方法，将注册的应用集合转换成缓存值
                             tracer = serializeAllAppsTimer.start();
                             payload = getPayLoad(key, registry.getApplications());
                         }
                     } else if (ALL_APPS_DELTA.equals(key.getName())) {
+                        //获取增量注册信息的缓存值
                         if (isRemoteRegionRequested) {
                             tracer = serializeDeltaAppsWithRemoteRegionTimer.start();
                             versionDeltaWithRegions.incrementAndGet();
@@ -504,7 +520,14 @@ public class ResponseCacheImpl implements ResponseCache {
      *
      */
     public class Value {
+
+        /**
+         * 原始值
+         */
         private final String payload;
+        /**
+         * GZIP 压缩后的值
+         */
         private byte[] gzipped;
 
         public Value(String payload) {
@@ -512,6 +535,7 @@ public class ResponseCacheImpl implements ResponseCache {
             if (!EMPTY_PAYLOAD.equals(payload)) {
                 Stopwatch tracer = compressPayloadTimer.start();
                 try {
+                    //压缩
                     ByteArrayOutputStream bos = new ByteArrayOutputStream();
                     GZIPOutputStream out = new GZIPOutputStream(bos);
                     byte[] rawBytes = payload.getBytes();
