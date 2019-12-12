@@ -131,7 +131,7 @@ public class ResponseCacheImpl implements ResponseCache {
         //zty 读写缓存
         this.readWriteCacheMap =
                 CacheBuilder.newBuilder().initialCapacity(serverConfig.getInitialCapacityOfResponseCache())  //最大缓存数量为 1000 。
-                        .expireAfterWrite(serverConfig.getResponseCacheAutoExpirationInSeconds(), TimeUnit.SECONDS)
+                        .expireAfterWrite(serverConfig.getResponseCacheAutoExpirationInSeconds(), TimeUnit.SECONDS)  //一段时间自动过期,默认值 ：180 秒
                         .removalListener(new RemovalListener<Key, Value>() {
                             @Override
                             public void onRemoval(RemovalNotification<Key, Value> notification) {
@@ -155,8 +155,11 @@ public class ResponseCacheImpl implements ResponseCache {
                             }
                         });
 
+        //定时任务对比 readWriteCacheMap 和 readOnlyCacheMap 的缓存值，若不一致，以前者为主。
+        // 通过这样的方式，实现了 readOnlyCacheMap 的定时过期
+        //初始化定时任务。配置 eureka.responseCacheUpdateIntervalMs，设置任务执行频率，默认值 ：30 * 1000 毫秒。
         if (shouldUseReadOnlyResponseCache) {
-            timer.schedule(getCacheUpdateTask(),
+            timer.schedule(getCacheUpdateTask(),   //deep
                     new Date(((System.currentTimeMillis() / responseCacheUpdateIntervalMs) * responseCacheUpdateIntervalMs)
                             + responseCacheUpdateIntervalMs),
                     responseCacheUpdateIntervalMs);
@@ -169,11 +172,14 @@ public class ResponseCacheImpl implements ResponseCache {
         }
     }
 
+    //zty 创建定时任务
     private TimerTask getCacheUpdateTask() {
         return new TimerTask() {
             @Override
             public void run() {
                 logger.debug("Updating the client cache from response cache");
+                // 循环 readOnlyCacheMap 的缓存键
+                //为什么不循环 readWriteCacheMap 呢？ readOnlyCacheMap 的缓存过期依赖 readWriteCacheMap，因此缓存键会更多。
                 for (Key key : readOnlyCacheMap.keySet()) {
                     if (logger.isDebugEnabled()) {
                         logger.debug("Updating the client cache from response cache for key : {} {} {} {}",
@@ -183,7 +189,7 @@ public class ResponseCacheImpl implements ResponseCache {
                         CurrentRequestVersion.set(key.getVersion());
                         Value cacheValue = readWriteCacheMap.get(key);
                         Value currentCacheValue = readOnlyCacheMap.get(key);
-                        if (cacheValue != currentCacheValue) {
+                        if (cacheValue != currentCacheValue) {  // 不一致时，进行替换
                             readOnlyCacheMap.put(key, cacheValue);
                         }
                     } catch (Throwable th) {
@@ -254,6 +260,7 @@ public class ResponseCacheImpl implements ResponseCache {
      *
      * @param appName the application name of the application.
      */
+    //zty 应用实例注册、下线、过期时，调用 ResponseCacheImpl#invalidate() 方法，主动过期读写缓存( readWriteCacheMap )
     @Override
     public void invalidate(String appName, @Nullable String vipAddress, @Nullable String secureVipAddress) {
         for (Key.KeyType type : Key.KeyType.values()) {
@@ -285,7 +292,7 @@ public class ResponseCacheImpl implements ResponseCache {
         for (Key key : keys) {
             logger.debug("Invalidating the response cache key : {} {} {} {}, {}",
                     key.getEntityType(), key.getName(), key.getVersion(), key.getType(), key.getEurekaAccept());
-
+            // 过期读写缓存
             readWriteCacheMap.invalidate(key);
             Collection<Key> keysWithRegions = regionSpecificKeys.get(key);
             if (null != keysWithRegions && !keysWithRegions.isEmpty()) {
