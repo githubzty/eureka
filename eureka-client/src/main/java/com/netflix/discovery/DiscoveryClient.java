@@ -330,7 +330,7 @@ public class DiscoveryClient implements EurekaClient {
         this(applicationInfoManager, config, args, backupRegistryProvider, ResolverUtils::randomize);
     }
 
-    //zty 全量获取入口
+    //zty 全量获取入口  也是服务注册的入口
     @Inject
     DiscoveryClient(ApplicationInfoManager applicationInfoManager, EurekaClientConfig config, AbstractDiscoveryClientOptionalArgs args,
                     Provider<BackupRegistry> backupRegistryProvider, EndpointRandomizer endpointRandomizer) {
@@ -1464,7 +1464,7 @@ public class DiscoveryClient implements EurekaClient {
     void refreshInstanceInfo() {
         // 刷新 数据中心信息。关注应用实例信息的 hostName 、 ipAddr 、 dataCenterInfo 等属性的变化。
         applicationInfoManager.refreshDataCenterInfoIfRequired();
-        // 刷新 租约信息。 关注应用实例信息的 renewalIntervalInSecs 、 durationInSecs 属性的变化。
+        // 刷新 租约信息。 关注应用实例信息的 renewalIntervalInSecs 、 durationInSecs 属性的变化。 deep
         applicationInfoManager.refreshLeaseInfoIfRequired();
         // 健康检查，跳过
         InstanceStatus status;

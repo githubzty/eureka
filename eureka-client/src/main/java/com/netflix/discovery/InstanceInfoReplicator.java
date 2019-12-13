@@ -138,7 +138,7 @@ class InstanceInfoReplicator implements Runnable {
         }
     }
 
-    //zty定时检查 InstanceInfo 的状态( status ) 属性是否发生变化。若是，发起注册。注册完设置为数据一致，等下次不一致
+    //zty 定时检查 InstanceInfo 的状态( status ) 属性是否发生变化。若是，发起注册。注册完设置为数据一致，等下次不一致
     //调用 DiscoveryClient#refreshInstanceInfo() 方法，刷新应用实例信息。此处可能导致应用实例信息数据不一致
     //调用 DiscoveryClient#register() 方法，Eureka-Client 向 Eureka-Server 注册应用实例。
     //调用 ScheduledExecutorService#schedule(...) 方法，再次延迟执行任务，并设置 scheduledPeriodicRef。通过这样的方式，不断循环定时执行任务。
